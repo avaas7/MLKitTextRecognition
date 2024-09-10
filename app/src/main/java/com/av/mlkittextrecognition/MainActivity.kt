@@ -67,62 +67,66 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun extractDetails(text: String) {
-        // Define patterns to match various details
-        val certNoPattern = Pattern.compile("\\b(\\d{2}-\\d{2}-\\d{2}-\\d{5})\\b")
-        val nameAfterCertNoPattern =
-            Pattern.compile("\\b(\\d{2}-\\d{2}-\\d{2}-\\d{5})\\s+([A-Z][a-zA-Z]*\\s[A-Z][a-zA-Z]*)")
+        // Updated pattern for certificate number and names (up to 3 words)
+        val certNoPattern = Pattern.compile("\\b(\\d{2}-\\d{2}-\\d{2}-\\d{5}|\\d{4}/\\d{3})\\b")
+        val nameAfterCertNoPattern = Pattern.compile(
+            "(\\d{2}-\\d{2}-\\d{2}-\\d{5}|\\d{4}/\\d{3})\\s+([A-Z][a-zA-Z]*\\s[A-Z][a-zA-Z]*)(?:\\s[A-Z][a-zA-Z]*)?"
+        )
 
-        // Updated pattern to handle month and day extraction
-        val monthDayPattern =
-            Pattern.compile("Month\\s*([A-Za-z]{3})\\s*Day\\s*[:\\-]?\\s*(\\d{1,2})")
-        val yearPattern = Pattern.compile("\\b(\\d{4})\\b")
-        val districtPattern = Pattern.compile("District\\s+(\\w+)")
-        val subMetroPattern = Pattern.compile("Sub-Metropolitan\\s*:?\\s*(\\w+)")
-        val wardNoPattern = Pattern.compile("Ward\\s*No\\.\\s*(\\d+)")
-        val sexPattern = Pattern.compile("Sex:\\s*(Male|Female)")
-
-        // Extract certificate number and name
         val certNoMatcher = nameAfterCertNoPattern.matcher(text)
-        val certificateNumber: String
-        val fullName: String
+        val certNoAltMatcher = certNoPattern.matcher(text)
+
+        var certificateNumber = "Not found"
+        var fullName = "Not found"
 
         if (certNoMatcher.find()) {
             certificateNumber = certNoMatcher.group(1)
-            fullName = certNoMatcher.group(2)
-        } else {
-            certificateNumber = "Not found"
-            fullName = "Not found"
+            fullName = certNoMatcher.group(2) ?: "Not found"
+        } else if (certNoAltMatcher.find()) {
+            certificateNumber = certNoAltMatcher.group(1)
         }
 
-        // Extract year, month, and day separately for date of birth
+        // Updated pattern for extracting month (3 uppercase letters)
+        val monthPattern = Pattern.compile("Month\\s*:?\\s*([A-Z]{3})")
+
+// Updated pattern to handle day extraction with optional colon and space
+        val dayPattern = Pattern.compile("Day\\s*:?\\s*(\\d+)")
+
+        val monthMatch = monthPattern.matcher(text)
+        val dayMatch = dayPattern.matcher(text)
+
+
+        // Updated pattern to handle year extraction, allowing for optional colon
+        val yearPattern = Pattern.compile("Year\\s*:?(\\d{4})")
+        val districtPattern = Pattern.compile("District\\s*:?\\s*([A-Za-z]+)")
+
+        // Updated pattern to match VDC, Sub-Metropolitan, or Municipality and capture the following word
+        val locationPattern = Pattern.compile("(VDC|Sub-Metropolitan|Municipality)\\s*:?\\s*([A-Za-z]+)")
+
+        val wardNoPattern = Pattern.compile("Ward\\s*No\\.?\\s*(\\d+)")
+        val sexPattern = Pattern.compile("Sex:?\\s*(Male|Female|Other)")
+
+        // Extract year, month, and day
         val yearMatch = yearPattern.matcher(text)
-        val monthDayMatch = monthDayPattern.matcher(text)
-        var month = "Not found"
-        var day = "Not found"
-
-        if (monthDayMatch.find()) {
-            month = monthDayMatch.group(1) // Extracted month
-            day = monthDayMatch.group(2) // Extracted day
-            Log.d("Details", "Extracted Month: $month")
-            Log.d("Details", "Extracted Day: $day")
-        }
+        val month = if (monthMatch.find()) monthMatch.group(1) else "Not found" // Capture month
+        val day = if (dayMatch.find()) dayMatch.group(1) else "Not found" // Capture day
 
         val year = if (yearMatch.find()) yearMatch.group(1) else "Not found"
 
         // Extract other details
         val district = extractPatternValue(districtPattern, text)
-        val subMetropolitan = extractPatternValue(subMetroPattern, text)
+        val location = extractLocationValue(locationPattern, text) // Changed to new method
         val wardNo = extractPatternValue(wardNoPattern, text)
         val sex = extractPatternValue(sexPattern, text)
 
-        // Log or use extracted details
+        // Log the extracted details
         Log.d("Details", "Citizenship Certificate No: $certificateNumber")
         Log.d("Details", "Full Name: $fullName")
         Log.d("Details", "Year: $year")
         Log.d("Details", "Month: $month")
         Log.d("Details", "Day: $day")
         Log.d("Details", "District: $district")
-        Log.d("Details", "Sub Metropolitan: $subMetropolitan")
+        Log.d("Details", "Location: $location")
         Log.d("Details", "Ward No: $wardNo")
         Log.d("Details", "Sex: $sex")
 
@@ -134,7 +138,7 @@ class MainActivity : AppCompatActivity() {
         Month: $month
         Day: $day
         District: $district
-        Sub Metropolitan: $subMetropolitan
+        Location: $location
         Ward No: $wardNo
         Sex: $sex
     """.trimIndent()
@@ -146,6 +150,12 @@ class MainActivity : AppCompatActivity() {
     private fun extractPatternValue(pattern: Pattern, text: String): String {
         val matcher = pattern.matcher(text)
         return if (matcher.find()) matcher.group(1) else "Not found"
+    }
+
+    // Updated method to extract the location name (the word after VDC, Sub-Metropolitan, or Municipality)
+    private fun extractLocationValue(pattern: Pattern, text: String): String {
+        val matcher = pattern.matcher(text)
+        return if (matcher.find()) matcher.group(2) else "Not found" // Return the second group (location name)
     }
 
 
